@@ -628,14 +628,26 @@
   </div>
 
   <h1>
-    The Trino control plane<br>
-    <span class="accent-green">built for Kubernetes</span>
+    Trino control plane<br>
+    <span class="accent-green">and MCP server</span>
   </h1>
 
   <p class="hero-sub">
-    Hot standby cluster pools, instant reservation, and 19 MCP tools so AI agents
-    can manage your Trino infrastructure through natural language.
+    One product. Two capabilities. Meridian is the Kubernetes-native control plane
+    that manages your Trino clusters — and the MCP server that lets AI agents operate them.
   </p>
+
+  <div style="display:flex;justify-content:center;gap:16px;margin-bottom:44px;flex-wrap:wrap;position:relative;">
+    <div style="background:var(--bg-card);border:1px solid var(--border-light);border-radius:12px;padding:18px 28px;text-align:left;max-width:280px;">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--purple-light);margin-bottom:8px;">Control Plane</div>
+      <div style="font-size:13.5px;color:var(--text-muted);line-height:1.6;">Kubernetes operator — hot standby pool, instant reservation, autoscaling. Answers <a href="https://github.com/trinodb/trino/issues/396" style="color:var(--blue);text-decoration:none;">Trino #396</a> open since 2019.</div>
+    </div>
+    <div style="display:flex;align-items:center;color:var(--text-faint);font-size:22px;font-weight:300;">+</div>
+    <div style="background:var(--bg-card);border:1px solid var(--border-light);border-radius:12px;padding:18px 28px;text-align:left;max-width:280px;">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--blue);margin-bottom:8px;">MCP Server</div>
+      <div style="font-size:13.5px;color:var(--text-muted);line-height:1.6;">19 tools for AI agents, Claude Desktop, and CI/CD. Answers <a href="https://github.com/trinodb/trino/issues/26239" style="color:var(--blue);text-decoration:none;">Trino #26239</a> — no official MCP existed.</div>
+    </div>
+  </div>
 
   <div class="hero-actions">
     <a href="https://github.com/meridian-io/meridian" class="btn btn-primary">
@@ -648,7 +660,7 @@
 
   <div class="install-block">
     <span class="prompt">$</span>
-    <span class="cmd" id="install-cmd">go install github.com/meridian-io/meridian/mcp/cmd/meridian-mcp@latest</span>
+    <span class="cmd" id="install-cmd">docker pull ghcr.io/meridian-io/trino-mcp-server:v1.0</span>
     <button class="copy-btn" onclick="copyInstall()">copy</button>
   </div>
 

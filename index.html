@@ -376,6 +376,63 @@
       line-height: 1.65;
     }
 
+    /* ── Use cases ── */
+    .usecases {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 18px;
+    }
+
+    .usecase-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .usecase-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 18px 24px 14px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .usecase-header .icon {
+      font-size: 18px;
+    }
+
+    .usecase-header h3 {
+      font-size: 14px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .usecase-header p {
+      font-size: 12px;
+      color: var(--text-faint);
+      margin-top: 1px;
+    }
+
+    .code-block {
+      padding: 20px 24px;
+      font-family: "SF Mono", "Fira Code", monospace;
+      font-size: 12px;
+      line-height: 1.75;
+      color: var(--text-muted);
+      overflow-x: auto;
+    }
+
+    .code-block .c-comment { color: var(--text-faint); }
+    .code-block .c-key     { color: #4b91f7; }
+    .code-block .c-str     { color: var(--purple-light); }
+    .code-block .c-fn      { color: #fb923c; }
+    .code-block .c-kw      { color: #c084fc; }
+
+    @media (max-width: 768px) {
+      .usecases { grid-template-columns: 1fr; }
+    }
+
     /* ── Lifecycle ── */
     .lifecycle-wrap {
       background: var(--bg-card);
@@ -658,6 +715,72 @@
       <div class="feature-icon">🔒</div>
       <h3>Idempotent Reservations</h3>
       <p>Same clientId + reservationId always returns the same cluster. Optimistic concurrency handles races safely.</p>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- Use cases -->
+<section class="section">
+  <div class="section-eyebrow">Use cases</div>
+  <div class="section-title">Not just for AI agents</div>
+
+  <div class="usecases">
+    <!-- CI/CD -->
+    <div class="usecase-card">
+      <div class="usecase-header">
+        <span class="icon">⚙️</span>
+        <div>
+          <h3>CI/CD Pipelines</h3>
+          <p>Reserve a cluster per run, release when done — no shared state</p>
+        </div>
+      </div>
+      <div class="code-block">
+<span class="c-comment"># GitHub Actions</span>
+<span class="c-key">- name:</span> <span class="c-str">Reserve test cluster</span>
+  <span class="c-key">run:</span> <span class="c-str">|</span>
+    RESULT=$(mcp-client call <span class="c-fn">reserve_cluster</span> \
+      --profile ci \
+      --reservation-id ${{ github.run_id }})
+    echo "COORDINATOR=$(jq -r .coordinatorUrl)" >> $GITHUB_ENV
+
+<span class="c-key">- name:</span> <span class="c-str">Run integration tests</span>
+  <span class="c-key">run:</span> <span class="c-str">./test.sh $COORDINATOR</span>
+
+<span class="c-key">- name:</span> <span class="c-str">Release cluster</span>
+  <span class="c-key">if:</span> <span class="c-str">always()</span>
+  <span class="c-key">run:</span> mcp-client call <span class="c-fn">release_cluster</span> \
+      --cluster-name $CLUSTER_NAME
+      </div>
+    </div>
+
+    <!-- Orchestrators -->
+    <div class="usecase-card">
+      <div class="usecase-header">
+        <span class="icon">🔀</span>
+        <div>
+          <h3>Workflow Orchestrators</h3>
+          <p>Airflow, Dagster, or Prefect — cluster lifecycle as a DAG task</p>
+        </div>
+      </div>
+      <div class="code-block">
+<span class="c-comment"># Dagster / Airflow</span>
+<span class="c-kw">@task</span>
+<span class="c-kw">def</span> <span class="c-fn">reserve_cluster</span>(dag_run):
+    <span class="c-kw">return</span> mcp.call(<span class="c-str">"reserve_cluster"</span>,
+        profile=<span class="c-str">"batch"</span>,
+        reservation_id=dag_run.run_id)
+
+<span class="c-kw">@task</span>
+<span class="c-kw">def</span> <span class="c-fn">run_transformation</span>(cluster):
+    run_dbt(target=cluster[<span class="c-str">"coordinatorUrl"</span>])
+
+<span class="c-kw">@task</span>
+<span class="c-kw">def</span> <span class="c-fn">release_cluster</span>(cluster):
+    mcp.call(<span class="c-str">"release_cluster"</span>,
+        cluster_name=cluster[<span class="c-str">"clusterName"</span>])
+      </div>
     </div>
   </div>
 </section>

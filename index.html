@@ -379,58 +379,52 @@
     /* ── Use cases ── */
     .usecases {
       display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 18px;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
     }
 
     .usecase-card {
       background: var(--bg-card);
       border: 1px solid var(--border);
       border-radius: 12px;
-      overflow: hidden;
+      padding: 22px 20px;
+      transition: border-color 0.2s, transform 0.2s;
     }
 
-    .usecase-header {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 18px 24px 14px;
-      border-bottom: 1px solid var(--border);
+    .usecase-card:hover {
+      border-color: var(--border-light);
+      transform: translateY(-2px);
     }
 
-    .usecase-header .icon {
-      font-size: 18px;
+    .usecase-icon {
+      font-size: 22px;
+      margin-bottom: 12px;
     }
 
-    .usecase-header h3 {
+    .usecase-card h3 {
       font-size: 14px;
       font-weight: 700;
       color: #fff;
+      margin-bottom: 6px;
     }
 
-    .usecase-header p {
-      font-size: 12px;
-      color: var(--text-faint);
-      margin-top: 1px;
-    }
-
-    .code-block {
-      padding: 20px 24px;
-      font-family: "SF Mono", "Fira Code", monospace;
-      font-size: 12px;
-      line-height: 1.75;
+    .usecase-card p {
+      font-size: 13px;
       color: var(--text-muted);
-      overflow-x: auto;
+      line-height: 1.6;
     }
 
-    .code-block .c-comment { color: var(--text-faint); }
-    .code-block .c-key     { color: #4b91f7; }
-    .code-block .c-str     { color: var(--purple-light); }
-    .code-block .c-fn      { color: #fb923c; }
-    .code-block .c-kw      { color: #c084fc; }
+    .usecase-tag {
+      display: inline-block;
+      margin-top: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-faint);
+      font-family: "SF Mono", "Fira Code", monospace;
+    }
 
     @media (max-width: 768px) {
-      .usecases { grid-template-columns: 1fr; }
+      .usecases { grid-template-columns: repeat(2, 1fr); }
     }
 
     /* ── Lifecycle ── */
@@ -727,60 +721,29 @@
   <div class="section-title">Not just for AI agents</div>
 
   <div class="usecases">
-    <!-- CI/CD -->
     <div class="usecase-card">
-      <div class="usecase-header">
-        <span class="icon">⚙️</span>
-        <div>
-          <h3>CI/CD Pipelines</h3>
-          <p>Reserve a cluster per run, release when done — no shared state</p>
-        </div>
-      </div>
-      <div class="code-block">
-<span class="c-comment"># GitHub Actions</span>
-<span class="c-key">- name:</span> <span class="c-str">Reserve test cluster</span>
-  <span class="c-key">run:</span> <span class="c-str">|</span>
-    RESULT=$(mcp-client call <span class="c-fn">reserve_cluster</span> \
-      --profile ci \
-      --reservation-id ${{ github.run_id }})
-    echo "COORDINATOR=$(jq -r .coordinatorUrl)" >> $GITHUB_ENV
-
-<span class="c-key">- name:</span> <span class="c-str">Run integration tests</span>
-  <span class="c-key">run:</span> <span class="c-str">./test.sh $COORDINATOR</span>
-
-<span class="c-key">- name:</span> <span class="c-str">Release cluster</span>
-  <span class="c-key">if:</span> <span class="c-str">always()</span>
-  <span class="c-key">run:</span> mcp-client call <span class="c-fn">release_cluster</span> \
-      --cluster-name $CLUSTER_NAME
-      </div>
+      <div class="usecase-icon">⚙️</div>
+      <h3>CI/CD Pipelines</h3>
+      <p>Reserve a fresh cluster per test run, release on completion. No shared state, no flaky tests from cluster contention.</p>
+      <span class="usecase-tag">GitHub Actions · Jenkins</span>
     </div>
-
-    <!-- Orchestrators -->
     <div class="usecase-card">
-      <div class="usecase-header">
-        <span class="icon">🔀</span>
-        <div>
-          <h3>Workflow Orchestrators</h3>
-          <p>Airflow, Dagster, or Prefect — cluster lifecycle as a DAG task</p>
-        </div>
-      </div>
-      <div class="code-block">
-<span class="c-comment"># Dagster / Airflow</span>
-<span class="c-kw">@task</span>
-<span class="c-kw">def</span> <span class="c-fn">reserve_cluster</span>(dag_run):
-    <span class="c-kw">return</span> mcp.call(<span class="c-str">"reserve_cluster"</span>,
-        profile=<span class="c-str">"batch"</span>,
-        reservation_id=dag_run.run_id)
-
-<span class="c-kw">@task</span>
-<span class="c-kw">def</span> <span class="c-fn">run_transformation</span>(cluster):
-    run_dbt(target=cluster[<span class="c-str">"coordinatorUrl"</span>])
-
-<span class="c-kw">@task</span>
-<span class="c-kw">def</span> <span class="c-fn">release_cluster</span>(cluster):
-    mcp.call(<span class="c-str">"release_cluster"</span>,
-        cluster_name=cluster[<span class="c-str">"clusterName"</span>])
-      </div>
+      <div class="usecase-icon">🔀</div>
+      <h3>Workflow Orchestrators</h3>
+      <p>Manage cluster lifecycle as a DAG task. Reserve before the job, release after — same as any other resource.</p>
+      <span class="usecase-tag">Airflow · Dagster · Prefect</span>
+    </div>
+    <div class="usecase-card">
+      <div class="usecase-icon">🏠</div>
+      <h3>Internal Developer Portals</h3>
+      <p>Expose cluster provisioning to app developers through a form. No kubectl access required.</p>
+      <span class="usecase-tag">Backstage · Cortex</span>
+    </div>
+    <div class="usecase-card">
+      <div class="usecase-icon">📦</div>
+      <h3>Infrastructure as Code</h3>
+      <p>Declare cluster pools as versioned resources alongside the rest of your infrastructure.</p>
+      <span class="usecase-tag">Terraform · Pulumi</span>
     </div>
   </div>
 </section>

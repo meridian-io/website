@@ -234,7 +234,7 @@
     }
 
     .install-block .prompt { color: var(--purple-light); }
-    .install-block .cmd    { color: #fff; }
+    .install-block .cmd    { color: #fff; overflow-x: auto; white-space: nowrap; max-width: 78vw; }
 
     .copy-btn {
       background: var(--border);
@@ -596,6 +596,23 @@
       .cta-section h2 { font-size: 30px; }
       footer { flex-direction: column; gap: 16px; text-align: center; padding: 24px; }
     }
+
+    /* Small screens: the decorative glows are wider than the screen. */
+    @media (max-width: 768px) {
+      html, body { overflow-x: hidden; }
+    }
+
+    @media (max-width: 374px) {
+      .tools-grid { grid-template-columns: 1fr; }
+    }
+
+    /* Phones: keep the nav inside the screen (Issues stays in the footer). */
+    @media (max-width: 480px) {
+      nav { padding: 14px 16px; }
+      .nav-links { gap: 12px; }
+      .nav-links a[href$="/issues"] { display: none; }
+      .nav-links .btn { padding: 6px 14px !important; }
+    }
   </style>
 </head>
 <body>
@@ -624,7 +641,7 @@
 <section class="hero">
   <div class="hero-badge">
     <div class="dot"></div>
-    v1.2 · <a href="https://github.com/meridian-io/meridian/blob/main/LICENSE" style="color:inherit;text-decoration:underline;text-underline-offset:3px;">Apache 2.0</a> · Open Source
+    v1.4.1 · <a href="https://github.com/meridian-io/meridian/blob/main/LICENSE" style="color:inherit;text-decoration:underline;text-underline-offset:3px;">Apache 2.0</a> · Open Source
   </div>
 
   <h1>
@@ -645,7 +662,7 @@
     <div style="display:flex;align-items:center;color:var(--text-faint);font-size:22px;font-weight:300;">+</div>
     <div style="background:var(--bg-card);border:1px solid var(--border-light);border-radius:12px;padding:18px 28px;text-align:left;max-width:280px;">
       <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--blue);margin-bottom:8px;">MCP Server</div>
-      <div style="font-size:13.5px;color:var(--text-muted);line-height:1.6;">19 tools for AI agents, Claude Desktop, and CI/CD. Answers <a href="https://github.com/trinodb/trino/issues/26239" style="color:var(--blue);text-decoration:none;">Trino #26239</a> — no official MCP existed.</div>
+      <div style="font-size:13.5px;color:var(--text-muted);line-height:1.6;">19 tools for Claude Code, Claude Desktop and any MCP client, on the latest MCP spec. Answers <a href="https://github.com/trinodb/trino/issues/26239" style="color:var(--blue);text-decoration:none;">Trino #26239</a> — no official MCP existed.</div>
     </div>
   </div>
 
@@ -660,7 +677,7 @@
 
   <div class="install-block">
     <span class="prompt">$</span>
-    <span class="cmd" id="install-cmd">docker pull ghcr.io/meridian-io/trino-mcp-server:v1.2</span>
+    <span class="cmd" id="install-cmd">helm install meridian oci://ghcr.io/meridian-io/charts/meridian --version 1.4.1 -n meridian --create-namespace</span>
     <button class="copy-btn" onclick="copyInstall()">copy</button>
   </div>
 
@@ -682,8 +699,8 @@
       <div class="stat-label">Reservation delay</div>
     </div>
     <div class="stat">
-      <div class="stat-num">56</div>
-      <div class="stat-label">QE Checks</div>
+      <div class="stat-num">11</div>
+      <div class="stat-label">E2E scenarios per PR</div>
     </div>
   </div>
 </section>
@@ -704,12 +721,12 @@
     <div class="feature-card">
       <div class="feature-icon">🤖</div>
       <h3>MCP Server</h3>
-      <p>19 tools for Claude, Cursor, and any MCP client. Reserve clusters, add catalogs, run queries — all through natural language.</p>
+      <p>19 tools for Claude Code, Claude Desktop, Cursor, and any MCP client. Follows the latest MCP spec (2026-07-28): one stateless <code>/mcp</code> endpoint that scales to many replicas. Older clients keep working.</p>
     </div>
     <div class="feature-card">
       <div class="feature-icon">☸️</div>
       <h3>Kubernetes Native</h3>
-      <p>Three controllers, three CRDs. Runs in any Kubernetes cluster. No external dependencies, no database, no sidecar.</p>
+      <p>Three controllers, three CRDs, one Helm chart. Runs in any Kubernetes cluster. No external dependencies, no database, no sidecar.</p>
     </div>
     <div class="feature-card">
       <div class="feature-icon">🌐</div>
@@ -725,6 +742,21 @@
       <div class="feature-icon">🔒</div>
       <h3>Reservation TTL + Safety</h3>
       <p>Same clientId + reservationId always returns the same cluster. Crashed clients are handled automatically: reservations expire after a configurable TTL.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🛡️</div>
+      <h3>Secure by Default</h3>
+      <p>The MCP server requires a token and runs queries read-only. Tools that change clusters stay off until you enable them. The REST API uses mTLS, and pods run as non-root.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🔑</div>
+      <h3>Credential Rotation</h3>
+      <p>Rotate catalog credentials from Kubernetes Secrets, HashiCorp Vault, or AWS Secrets Manager. The catalog is swapped on the live cluster, with no restart.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🧪</div>
+      <h3>Tested on Real Clusters</h3>
+      <p>Every pull request installs the last release on Kubernetes, upgrades it, and runs 11 end-to-end scenarios with real Trino: queries, reservations, crashes, rotation, and rolling restarts.</p>
     </div>
   </div>
 </section>
@@ -820,32 +852,38 @@
 <!-- Tools -->
 <section class="section">
   <div class="section-eyebrow">MCP Tools</div>
-  <div class="section-title">19 tools, ready today</div>
+  <div class="section-title">19 tools: 12 on by default, 7 you switch on</div>
 
   <div class="tools-grid">
     <div class="tool-pill"><span class="tp-dot tp-green"></span>list_clusters</div>
     <div class="tool-pill"><span class="tp-dot tp-green"></span>get_cluster</div>
-    <div class="tool-pill"><span class="tp-dot tp-green"></span>create_cluster</div>
-    <div class="tool-pill"><span class="tp-dot tp-green"></span>delete_cluster</div>
+    <div class="tool-pill"><span class="tp-dot tp-orange"></span>create_cluster</div>
+    <div class="tool-pill"><span class="tp-dot tp-orange"></span>delete_cluster</div>
     <div class="tool-pill"><span class="tp-dot tp-green"></span>reserve_cluster</div>
     <div class="tool-pill"><span class="tp-dot tp-green"></span>release_cluster</div>
-    <div class="tool-pill"><span class="tp-dot tp-green"></span>scale_pool</div>
+    <div class="tool-pill"><span class="tp-dot tp-orange"></span>scale_pool</div>
     <div class="tool-pill"><span class="tp-dot tp-green"></span>list_pools</div>
-    <div class="tool-pill"><span class="tp-dot tp-green"></span>add_catalog</div>
-    <div class="tool-pill"><span class="tp-dot tp-green"></span>remove_catalog</div>
+    <div class="tool-pill"><span class="tp-dot tp-orange"></span>add_catalog</div>
+    <div class="tool-pill"><span class="tp-dot tp-orange"></span>remove_catalog</div>
     <div class="tool-pill"><span class="tp-dot tp-green"></span>list_catalogs</div>
     <div class="tool-pill"><span class="tp-dot tp-green"></span>list_schemas</div>
     <div class="tool-pill"><span class="tp-dot tp-green"></span>list_tables</div>
     <div class="tool-pill"><span class="tp-dot tp-green"></span>get_table_schema</div>
     <div class="tool-pill"><span class="tp-dot tp-green"></span>execute_query</div>
     <div class="tool-pill"><span class="tp-dot tp-green"></span>explain_query</div>
-    <div class="tool-pill"><span class="tp-dot tp-green"></span>rotate_credentials</div>
+    <div class="tool-pill"><span class="tp-dot tp-orange"></span>rotate_credentials</div>
     <div class="tool-pill"><span class="tp-dot tp-green"></span>get_audit_log</div>
-    <div class="tool-pill"><span class="tp-dot tp-green"></span>promote_environment</div>
+    <div class="tool-pill"><span class="tp-dot tp-orange"></span>promote_environment</div>
   </div>
 
   <div style="display:flex; align-items:center; gap:20px; margin-top:20px; font-size:13px; color:var(--text-faint);">
-    <span style="display:flex;align-items:center;gap:6px;"><span class="tp-dot tp-green" style="display:inline-block;"></span> Live in v1.2</span>
+    <span style="display:flex;align-items:center;gap:6px;"><span class="tp-dot tp-green" style="display:inline-block;"></span> On by default</span>
+    <span style="display:flex;align-items:center;gap:6px;"><span class="tp-dot tp-orange" style="display:inline-block;"></span> Changes clusters: turn on with <code>--enable-tools</code></span>
+  </div>
+
+  <div class="install-block" style="margin-top:28px;margin-bottom:0;">
+    <span class="prompt">$</span>
+    <span class="cmd">claude mcp add --transport http meridian https://&lt;your-host&gt;/mcp --header "Authorization: Bearer &lt;token&gt;"</span>
   </div>
 </section>
 
@@ -886,7 +924,7 @@
       <h3 style="font-family:monospace;font-size:14px;margin-bottom:8px;">trino-mcp-server</h3>
       <p style="font-size:13px;margin-bottom:16px;">MCP server for AI agents, Claude Desktop, and CI/CD pipelines.</p>
       <div style="background:#0a0a0a;border:1px solid #1a1a1a;border-radius:8px;padding:12px;font-size:12px;color:#4ade80;">
-        docker pull ghcr.io/meridian-io/trino-mcp-server:v1.2
+        docker pull ghcr.io/meridian-io/trino-mcp-server:v1.4.1
       </div>
     </div>
     <div class="feature-card" style="font-family:monospace;">
@@ -894,7 +932,7 @@
       <h3 style="font-family:monospace;font-size:14px;margin-bottom:8px;">trino-operator</h3>
       <p style="font-size:13px;margin-bottom:16px;">Kubernetes operator — manages the full Trino cluster lifecycle.</p>
       <div style="background:#0a0a0a;border:1px solid #1a1a1a;border-radius:8px;padding:12px;font-size:12px;color:#4ade80;">
-        docker pull ghcr.io/meridian-io/trino-operator:v1.2
+        docker pull ghcr.io/meridian-io/trino-operator:v1.4.1
       </div>
     </div>
   </div>

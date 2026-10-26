@@ -610,7 +610,7 @@
     @media (max-width: 480px) {
       nav { padding: 14px 16px; }
       .nav-links { gap: 12px; }
-      .nav-links a[href$="/issues"] { display: none; }
+      .nav-links a[href$="/issues"], .nav-links a[href$="/releases"] { display: none; }
       .nav-links .btn { padding: 6px 14px !important; }
     }
   </style>
@@ -627,6 +627,7 @@
 <nav>
   <a href="/" class="nav-logo">meridian</a>
   <div class="nav-links">
+    <a href="/tutorial.html">Tutorial</a>
     <a href="https://github.com/meridian-io/meridian/blob/main/README.md">Docs</a>
     <a href="https://github.com/meridian-io/meridian/releases">Releases</a>
     <a href="https://github.com/meridian-io/meridian/issues">Issues</a>
@@ -641,7 +642,7 @@
 <section class="hero">
   <div class="hero-badge">
     <div class="dot"></div>
-    v1.4.1 · <a href="https://github.com/meridian-io/meridian/blob/main/LICENSE" style="color:inherit;text-decoration:underline;text-underline-offset:3px;">Apache 2.0</a> · Open Source
+    v1.5.0 · <a href="https://github.com/meridian-io/meridian/blob/main/LICENSE" style="color:inherit;text-decoration:underline;text-underline-offset:3px;">Apache 2.0</a> · Open Source
   </div>
 
   <h1>
@@ -677,7 +678,7 @@
 
   <div class="install-block">
     <span class="prompt">$</span>
-    <span class="cmd" id="install-cmd">helm install meridian oci://ghcr.io/meridian-io/charts/meridian --version 1.4.1 -n meridian --create-namespace</span>
+    <span class="cmd" id="install-cmd">helm install meridian oci://ghcr.io/meridian-io/charts/meridian --version 1.5.0 -n meridian --create-namespace</span>
     <button class="copy-btn" onclick="copyInstall()">copy</button>
   </div>
 
@@ -699,7 +700,7 @@
       <div class="stat-label">Reservation delay</div>
     </div>
     <div class="stat">
-      <div class="stat-num">11</div>
+      <div class="stat-num">13</div>
       <div class="stat-label">E2E scenarios per PR</div>
     </div>
   </div>
@@ -756,7 +757,7 @@
     <div class="feature-card">
       <div class="feature-icon">🧪</div>
       <h3>Tested on Real Clusters</h3>
-      <p>Every pull request installs the last release on Kubernetes, upgrades it, and runs 11 end-to-end scenarios with real Trino: queries, reservations, crashes, rotation, and rolling restarts.</p>
+      <p>Every pull request installs the last release on Kubernetes, upgrades it, and runs 13 end-to-end scenarios with real Trino: queries, reservations, crashes, rotation, and rolling restarts.</p>
     </div>
   </div>
 </section>
@@ -924,7 +925,7 @@
       <h3 style="font-family:monospace;font-size:14px;margin-bottom:8px;">trino-mcp-server</h3>
       <p style="font-size:13px;margin-bottom:16px;">MCP server for AI agents, Claude Desktop, and CI/CD pipelines.</p>
       <div style="background:#0a0a0a;border:1px solid #1a1a1a;border-radius:8px;padding:12px;font-size:12px;color:#4ade80;">
-        docker pull ghcr.io/meridian-io/trino-mcp-server:v1.4.1
+        docker pull ghcr.io/meridian-io/trino-mcp-server:v1.5.0
       </div>
     </div>
     <div class="feature-card" style="font-family:monospace;">
@@ -932,7 +933,7 @@
       <h3 style="font-family:monospace;font-size:14px;margin-bottom:8px;">trino-operator</h3>
       <p style="font-size:13px;margin-bottom:16px;">Kubernetes operator — manages the full Trino cluster lifecycle.</p>
       <div style="background:#0a0a0a;border:1px solid #1a1a1a;border-radius:8px;padding:12px;font-size:12px;color:#4ade80;">
-        docker pull ghcr.io/meridian-io/trino-operator:v1.4.1
+        docker pull ghcr.io/meridian-io/trino-operator:v1.5.0
       </div>
     </div>
   </div>

@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Meridian Tutorial: hot Trino pools and AI agents on Kubernetes</title>
+  <meta name="description" content="A step-by-step guide to Meridian: install it, run a pool of ready Trino clusters, reserve them from apps, connect AI agents over MCP, and monitor it all." />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --green-strong: #15803d;
+      --green-light:  #4ade80;
+      --green-dim:    #052e16;
+      --blue:         #4b91f7;
+      --bg:           #080f09;
+      --bg-card:      #0c140d;
+      --bg-code:      #050a06;
+      --border:       #1a2e1e;
+      --border-light: #21362a;
+      --text:         #e2e8f0;
+      --text-muted:   #8892a4;
+      --text-faint:   #5b6478;
+      --orange:       #fb923c;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+    }
+
+    a { color: var(--green-light); text-underline-offset: 3px; }
+
+    /* ── Nav (same as the landing page) ── */
+    nav {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 18px 56px; border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(8,15,9,0.92);
+      backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    }
+    .nav-logo { font-size: 18px; font-weight: 800; color: #fff; letter-spacing: -0.5px; text-decoration: none; }
+    .nav-links { display: flex; align-items: center; gap: 36px; }
+    .nav-links a { font-size: 14px; color: var(--text-muted); text-decoration: none; transition: color 0.15s; }
+    .nav-links a:hover, .nav-links a.active { color: #fff; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 7px; padding: 8px 20px;
+      border-radius: 50px; font-size: 14px; font-weight: 700; text-decoration: none;
+      background: var(--green-strong); color: #fff !important;
+      box-shadow: 0 0 24px rgba(22,163,74,0.3);
+    }
+
+    /* ── Header ── */
+    .page-head { max-width: 1180px; margin: 0 auto; padding: 72px 48px 40px; }
+    .eyebrow {
+      font-size: 12px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
+      color: var(--green-light); margin-bottom: 14px;
+    }
+    .page-head h1 { font-size: 46px; line-height: 1.12; letter-spacing: -1.5px; color: #fff; max-width: 820px; }
+    .page-head p.lead { font-size: 18px; color: var(--text-muted); max-width: 720px; margin-top: 18px; }
+    .meta { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 26px; }
+    .chip {
+      font-size: 12.5px; color: var(--text-muted); border: 1px solid var(--border-light);
+      border-radius: 50px; padding: 4px 12px; background: var(--bg-card);
+    }
+
+    /* ── Layout ── */
+    .layout {
+      max-width: 1180px; margin: 0 auto; padding: 0 48px 96px;
+      display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 56px;
+    }
+    .toc { position: sticky; top: 92px; align-self: start; max-height: calc(100vh - 110px); overflow-y: auto; }
+    .toc-title { font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-faint); margin-bottom: 12px; }
+    .toc ol { list-style: none; border-left: 1px solid var(--border); }
+    .toc a {
+      display: block; padding: 5px 0 5px 16px; margin-left: -1px; font-size: 13.5px;
+      color: var(--text-muted); text-decoration: none; border-left: 2px solid transparent;
+    }
+    .toc a:hover { color: #fff; }
+    .toc a.current { color: var(--green-light); border-left-color: var(--green-light); }
+
+    main { min-width: 0; max-width: 780px; }
+    section { padding-top: 24px; margin-bottom: 56px; scroll-margin-top: 80px; }
+    h2 {
+      font-size: 28px; letter-spacing: -0.6px; color: #fff; margin-bottom: 16px;
+      display: flex; align-items: baseline; gap: 14px;
+    }
+    h2 .step {
+      flex-shrink: 0; font-size: 13px; font-weight: 700; color: var(--green-light);
+      border: 1px solid var(--border-light); background: var(--green-dim);
+      border-radius: 50px; padding: 2px 11px; position: relative; top: -4px;
+    }
+    h3 { font-size: 18px; color: #fff; margin: 28px 0 10px; }
+    p { margin-bottom: 14px; color: #cbd5e1; }
+    ul.list, ol.list { margin: 0 0 16px 22px; color: #cbd5e1; }
+    ul.list li, ol.list li { margin-bottom: 6px; }
+    strong { color: #fff; }
+    code {
+      font-family: "SF Mono", "Fira Code", Menlo, monospace; font-size: 0.88em;
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 5px; padding: 1px 6px;
+      color: #d1fae5; overflow-wrap: anywhere;
+    }
+
+    /* ── Code blocks ── */
+    .code { position: relative; margin: 6px 0 20px; }
+    .code pre {
+      background: var(--bg-code); border: 1px solid var(--border); border-radius: 10px;
+      padding: 16px 18px; overflow-x: auto; font-size: 13px; line-height: 1.6;
+      font-family: "SF Mono", "Fira Code", Menlo, monospace; color: #e2e8f0;
+    }
+    .code pre code { background: none; border: none; padding: 0; color: inherit; font-size: inherit; }
+    .code .label {
+      position: absolute; top: -9px; left: 14px; font-size: 10.5px; font-weight: 700; letter-spacing: 1px;
+      text-transform: uppercase; color: var(--text-faint); background: var(--bg); padding: 0 6px;
+    }
+    .code.output pre { color: var(--text-muted); background: var(--bg-card); }
+    .copy {
+      position: absolute; top: 8px; right: 8px; font-size: 11px; font-weight: 600; letter-spacing: 0.3px;
+      text-transform: uppercase; color: var(--text-muted); background: var(--border); border: none;
+      border-radius: 4px; padding: 4px 10px; cursor: pointer; font-family: inherit;
+    }
+    .copy:hover { color: var(--green-light); background: var(--green-dim); }
+    .c { color: var(--text-faint); } /* shell comments */
+
+    /* ── Callouts, tables, figures ── */
+    .note {
+      border: 1px solid var(--border-light); border-left: 3px solid var(--green-light);
+      background: var(--bg-card); border-radius: 8px; padding: 14px 18px; margin: 4px 0 20px;
+    }
+    .note p:last-child { margin-bottom: 0; }
+    .note.blue { border-left-color: var(--blue); }
+    .table-wrap { overflow-x: auto; margin: 6px 0 20px; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    th { color: var(--text-muted); font-weight: 600; font-size: 12.5px; text-transform: uppercase; letter-spacing: 0.6px; }
+    td { color: #cbd5e1; }
+    td code { white-space: nowrap; overflow-wrap: normal; }
+
+    .cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin: 10px 0 22px; }
+    .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; }
+    .card h4 { color: #fff; font-size: 15px; margin-bottom: 6px; }
+    .card p { font-size: 14px; color: var(--text-muted); margin: 0; }
+
+    .flow {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 8px 0 20px;
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px;
+    }
+    .pill {
+      font-size: 13px; font-weight: 600; padding: 4px 12px; border-radius: 6px;
+      border: 1px solid var(--border-light); background: var(--bg-code);
+    }
+    .pill.idle { color: var(--green-light); border-color: #166534; }
+    .pill.res { color: var(--blue); border-color: #1e3a8a; }
+    .pill.pend { color: #fde68a; }
+    .pill.bad { color: var(--orange); }
+    .arrow { color: var(--text-faint); }
+    .flow .gap { flex-basis: 100%; height: 0; }
+
+    .checklist { list-style: none; margin: 0 0 16px; }
+    .checklist li { position: relative; padding-left: 28px; margin-bottom: 10px; color: #cbd5e1; }
+    .checklist li::before { content: "✓"; position: absolute; left: 4px; color: var(--green-light); font-weight: 700; }
+
+    footer {
+      border-top: 1px solid var(--border); padding: 28px 56px; display: flex;
+      justify-content: space-between; font-size: 13px; color: var(--text-faint);
+    }
+    footer a { color: var(--text-muted); text-decoration: none; margin-left: 20px; }
+
+    @media (max-width: 960px) {
+      .layout { grid-template-columns: 1fr; gap: 0; }
+      .toc { position: static; max-height: none; margin-bottom: 24px; border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; background: var(--bg-card); }
+    }
+    @media (max-width: 768px) {
+      html, body { overflow-x: hidden; }
+      nav { padding: 14px 16px; }
+      .nav-links { gap: 14px; }
+      .nav-links a.hide-sm { display: none; }
+      .btn { padding: 6px 14px; }
+      .page-head { padding: 44px 16px 28px; }
+      .page-head h1 { font-size: 32px; letter-spacing: -1px; }
+      .page-head p.lead { font-size: 16px; }
+      .layout { padding: 0 16px 64px; }
+      h2 { font-size: 23px; }
+      .cards { grid-template-columns: 1fr; }
+      footer { flex-direction: column; gap: 10px; padding: 24px 16px; }
+      footer a { margin: 0 16px 0 0; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="/" class="nav-logo">meridian</a>
+  <div class="nav-links">
+    <a href="/tutorial.html" class="active">Tutorial</a>
+    <a href="https://github.com/meridian-io/meridian/blob/main/README.md" class="hide-sm">Docs</a>
+    <a href="https://github.com/meridian-io/meridian/releases" class="hide-sm">Releases</a>
+    <a href="https://github.com/meridian-io/meridian" class="btn">GitHub</a>
+  </div>
+</nav>
+
+<header class="page-head">
+  <div class="eyebrow">Tutorial</div>
+  <h1>From zero to an AI agent querying Trino, on your laptop</h1>
+  <p class="lead">This guide walks you through Meridian from first install to monitoring. You'll run a pool of ready Trino clusters, query sample data, reserve a cluster from an app, connect an AI agent, and see it all on a dashboard.</p>
+  <div class="meta">
+    <span class="chip">About 45 minutes</span>
+    <span class="chip">Meridian v1.5.0</span>
+    <span class="chip">Kubernetes 1.26+</span>
+    <span class="chip">Runs on a laptop with kind</span>
+  </div>
+</header>
+
+<div class="layout">
+  <aside class="toc">
+    <div class="toc-title">On this page</div>
+    <ol>
+      <li><a href="#what">What Meridian is</a></li>
+      <li><a href="#concepts">How it works</a></li>
+      <li><a href="#before">Before you start</a></li>
+      <li><a href="#cluster">1. Create a Kubernetes cluster</a></li>
+      <li><a href="#install">2. Install Meridian</a></li>
+      <li><a href="#pool">3. Create your first pool</a></li>
+      <li><a href="#query">4. Run your first query</a></li>
+      <li><a href="#reserve">5. Reserve a cluster from an app</a></li>
+      <li><a href="#mcp">6. Connect an AI agent</a></li>
+      <li><a href="#scale">7. Size and scale pools</a></li>
+      <li><a href="#rotate">8. Rotate catalog credentials</a></li>
+      <li><a href="#monitor">9. Monitor Meridian</a></li>
+      <li><a href="#production">Going to production</a></li>
+      <li><a href="#cleanup">Clean up</a></li>
+    </ol>
+  </aside>
+
+  <main>
+
+    <!-- ───────────────────────────────────────────── -->
+    <section id="what">
+      <h2>What Meridian is</h2>
+      <p><a href="https://trino.io">Trino</a> is a fast SQL engine for querying data where it lives: data lakes, warehouses, databases. A Trino cluster takes from tens of seconds to several minutes to start. So most teams pick one of two compromises:</p>
+      <ul class="list">
+        <li>Keep <strong>one big shared cluster</strong> running. A heavy job from one team slows down everyone else, and a bad query can take it down for all.</li>
+        <li><strong>Start a cluster per job</strong>. Every pipeline run, test and notebook then waits for start-up.</li>
+      </ul>
+      <p><strong>Meridian removes the trade-off.</strong> It keeps a pool of Trino clusters started and waiting. When a job needs one, Meridian hands over a ready cluster in milliseconds. When the job is done, the cluster goes back to the pool. Broken clusters are replaced on their own.</p>
+      <p>Meridian has two parts, and both ship in the same Helm chart:</p>
+      <div class="cards">
+        <div class="card">
+          <h4>☸️ The operator</h4>
+          <p>Runs in Kubernetes. Keeps pools of ready Trino clusters, sizes them from profiles, health-checks and replaces them, rotates catalog credentials, and serves a REST API for reservations.</p>
+        </div>
+        <div class="card">
+          <h4>🤖 The MCP server</h4>
+          <p>Lets AI agents such as Claude Code and Claude Desktop work with your clusters through the <a href="https://modelcontextprotocol.io">Model Context Protocol</a>: list pools, reserve a cluster, explore catalogs, and run read-only SQL.</p>
+        </div>
+      </div>
+      <p>Meridian is open source under the Apache 2.0 license and runs entirely in your own Kubernetes cluster.</p>
+    </section>
+
+    <!-- ───────────────────────────────────────────── -->
+    <section id="concepts">
+      <h2>How it works</h2>
+      <p>Meridian adds three resource types to Kubernetes. You create and inspect them with <code>kubectl</code> like any other resource.</p>
+      <div class="table-wrap"><table>
+        <tr><th>Resource</th><th>What it is</th></tr>
+        <tr><td><code>Cluster</code></td><td>One Trino cluster: a coordinator and some workers. You rarely create these by hand; pools do it for you.</td></tr>
+        <tr><td><code>ClusterPool</code></td><td>"Keep N clusters of this shape ready." The pool creates, replaces and removes clusters to stay at N.</td></tr>
+        <tr><td><code>ClusterPoolAutoscaler</code></td><td>Grows or shrinks a pool based on how many of its clusters are in use.</td></tr>
+      </table></div>
+
+      <h3>The life of a cluster</h3>
+      <div class="flow">
+        <span class="pill pend">Pending</span><span class="arrow">→</span>
+        <span class="pill idle">Idle</span><span class="arrow">⇄</span>
+        <span class="pill res">Reserved</span>
+        <span class="gap"></span>
+        <span class="pill bad">Failed</span><span class="arrow">/</span><span class="pill bad">Degraded</span><span class="arrow">→ replaced by the pool</span>
+      </div>
+      <ul class="list">
+        <li><strong>Pending</strong>: the pods are starting. Meridian waits until Trino itself reports it is ready, not just until the container runs.</li>
+        <li><strong>Idle</strong>: ready, and waiting in the pool. This is what "hot standby" means.</li>
+        <li><strong>Reserved</strong>: handed to one client. Nobody else gets it until it is released, or until its reservation expires (after 4 hours by default), so a crashed client can't hold it forever.</li>
+        <li><strong>Failed / Degraded</strong>: didn't start, or its coordinator stopped responding. The pool deletes it and creates a replacement.</li>
+      </ul>
+
+      <h3>Profiles</h3>
+      <p>A <strong>profile</strong> decides how big each Trino pod is: JVM heap, memory, CPU and query memory limits. It also decides which sample catalogs a cluster gets. Meridian has three built in: <code>default</code>, <code>medium</code> and <code>large</code>. You can define your own in a ConfigMap, as you'll do in step 3.</p>
+
+      <h3>Three ways in</h3>
+      <div class="table-wrap"><table>
+        <tr><th>Who</th><th>How</th><th>Typical use</th></tr>
+        <tr><td>People</td><td><code>kubectl</code></td><td>Create pools, inspect clusters, change sizes</td></tr>
+        <tr><td>Apps and pipelines</td><td>REST API with mutual TLS</td><td>Reserve a cluster for a nightly job, a CI run or an Airflow task</td></tr>
+        <tr><td>AI agents</td><td>MCP server</td><td>Ask questions about your data in plain language</td></tr>
+      </table></div>
+    </section>
+
+    <!-- ───────────────────────────────────────────── -->
+    <section id="before">
+      <h2>Before you start</h2>
+      <p>You need these tools on your machine:</p>
+      <ul class="list">
+        <li><a href="https://docs.docker.com/get-docker/">Docker</a>, with at least 8 GB of memory available to it</li>
+        <li><a href="https://kind.sigs.k8s.io/docs/user/quick-start/#installation">kind</a> to run Kubernetes locally. Skip it if you already have a cluster</li>
+        <li><a href="https://kubernetes.io/docs/tasks/tools/">kubectl</a> and <a href="https://helm.sh/docs/intro/install/">Helm 3</a></li>
+        <li><code>openssl</code> and <code>curl</code>, which most systems already have</li>
+        <li>Optional, for step 6: <a href="https://docs.anthropic.com/en/docs/claude-code">Claude Code</a> or Claude Desktop</li>
+      </ul>
+      <div class="note blue">
+        <p>Every command in this guide runs in one terminal unless a step says to open a second one. Steps 5 and 6 each keep a <code>port-forward</code> running in its own terminal.</p>
+      </div>
+    </section>
+
+    <!-- ───────────────────────────────────────────── -->
+    <section id="cluster">
+      <h2><span class="step">Step 1</span>Create a Kubernetes cluster</h2>
+      <p>Create a local cluster called <code>meridian-tutorial</code>. It takes about 30 seconds.</p>
+      <div class="code"><pre><code>kind create cluster --name meridian-tutorial
+kubectl cluster-info --context kind-meridian-tutorial</code></pre></div>
+      <p>If you're using an existing cluster instead, make sure <code>kubectl</code> points at it and that you can create namespaces and cluster-wide resources.</p>
+    </section>
+
+    <!-- ───────────────────────────────────────────── -->
+    <section id="install">
+      <h2><span class="step">Step 2</span>Install Meridian</h2>
+      <p>Install the chart into a <code>meridian</code> namespace. This adds the three resource types and starts the operator.</p>
+      <div class="code"><pre><code>helm install meridian oci://ghcr.io/meridian-io/charts/meridian --version 1.5.0 \
+  --namespace meridian --create-namespace
+
+kubectl -n meridian get pods</code></pre></div>
+      <div class="code output"><span class="label">Output</span><pre><code>NAME                                 READY   STATUS    RESTARTS   AGE
+meridian-operator-6d9f8b7c4d-x2kqp   1/1     Running   0          20s</code></pre></div>
+      <p>The operator watches every namespace, so install the chart once per Kubernetes cluster. The REST API and MCP server are off for now; you'll turn them on in steps 5 and 6.</p>
+    </section>
+
+    <!-- ───────────────────────────────────────────── -->
+    <section id="pool">
+      <h2><span class="step">Step 3</span>Create your first pool</h2>
+      <p>The built-in <code>default</code> profile gives each Trino pod 5 GiB of memory, which is the right size for real work but too much for a laptop. So first create a small <strong>profile</strong> called <code>laptop</code>, then a <strong>pool</strong> of two clusters that uses it.</p>
+      <div class="code"><pre><code>cat &lt;&lt;EOF | kubectl apply -n meridian -f -
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: meridian-profile-laptop     <span class="c"># meridian-profile-&lt;name&gt;</span>
+data:
+  jvmHeap: "1G"
+  memory: "1536Mi"                  <span class="c"># per Trino pod</span>
+  cpu: "250m"
+  queryMaxMemory: "512MB"
+  queryMaxMemoryPerNode: "256MB"
+---
+apiVersion: meridian.io/v1alpha1
+kind: ClusterPool
+metadata:
+  name: demo-pool
+spec:
+  replicas: 2                       <span class="c"># keep two clusters ready</span>
+  template:
+    profile: laptop
+    image: trinodb/trino:435
+    workers: 1                      <span class="c"># per cluster, plus one coordinator</span>
+EOF</code></pre></div>
+      <p>Watch the clusters come up. The first time, Kubernetes also downloads the Trino image, which can take a few minutes on a slow connection. Press <kbd>Ctrl-C</kbd> when both are <code>Idle</code>.</p>
+      <div class="code"><pre><code>kubectl -n meridian get clusters -w</code></pre></div>
+      <div class="code output"><span class="label">Output</span><pre><code>NAME                 PHASE     PROFILE   CLIENTID   READY   LASTROTATED   AGE
+demo-pool-duvnm1m9   Pending   laptop                                     5s
+demo-pool-x1x38mrt   Pending   laptop                                     5s
+demo-pool-duvnm1m9   Idle      laptop               true                  33s
+demo-pool-x1x38mrt   Idle      laptop               true                  33s</code></pre></div>
+      <p>Each cluster is a coordinator and one worker, running as ordinary Kubernetes pods. The pool shows a summary:</p>
+      <div class="code"><pre><code>kubectl -n meridian get clusterpools</code></pre></div>
+      <div class="code output"><span class="label">Output</span><pre><code>NAME        REPLICAS   READY   RESERVED   PENDING   WORKLOAD   AGE
+demo-pool   2          2                                       40s</code></pre></div>
+      <div class="note">
+        <p><strong>Try it:</strong> delete one of the clusters with <code>kubectl -n meridian delete cluster &lt;name&gt;</code>. The pool notices that it's one short and starts a replacement right away.</p>
+      </div>
+    </section>
+
+    <!-- ───────────────────────────────────────────── -->
+    <section id="query">
+      <h2><span class="step">Step 4</span>Run your first query</h2>
+      <p>Every cluster built from the <code>default</code> profile includes <code>tpch</code>, a read-only sample dataset that ships with Trino. Your <code>laptop</code> profile builds on <code>default</code>, so it has it too. Pick a cluster and use the Trino CLI inside its coordinator:</p>
+      <div class="code"><pre><code>CLUSTER=$(kubectl -n meridian get clusters -o jsonpath='{.items[0].metadata.name}')
+
+kubectl -n meridian exec deploy/$CLUSTER-coordinator -- trino --execute "SHOW CATALOGS"</code></pre></div>
+      <div class="code output"><span class="label">Output</span><pre><code>"system"
+"tpch"</code></pre></div>
+      <p>Now join two tables:</p>
+      <div class="code"><pre><code>kubectl -n meridian exec deploy/$CLUSTER-coordinator -- trino --output-format=ALIGNED --execute "
+  SELECT n.name AS nation, r.name AS region
+  FROM tpch.tiny.nation n JOIN tpch.tiny.region r ON n.regionkey = r.regionkey
+  ORDER BY n.name LIMIT 5"</code></pre></div>
+      <div class="code output"><span class="label">Output</span><pre><code>  nation   | region
+-----------+---------
+ ALGERIA   | AFRICA
+ ARGENTINA | AMERICA
+ BRAZIL    | AMERICA
+ CANADA    | AMERICA
+ CHINA     | ASIA
+(5 rows)</code></pre></div>
+      <p><code>tpch</code> has several sizes. <code>tiny</code> is instant, and <code>sf1</code> holds 1.5 million orders, enough to see Trino work:</p>
+      <div class="code"><pre><code>kubectl -n meridian exec deploy/$CLUSTER-coordinator -- trino --output-format=ALIGNED \
+  --execute "SELECT count(*) AS orders FROM tpch.sf1.orders"</code></pre></div>
+      <p>In a real deployment you connect clusters to your own data by adding catalogs: Hive or Iceberg for a data lake, PostgreSQL, MySQL, and so on. The sample data just means a new cluster is useful the moment it's ready.</p>
+    </section>
+
+    <!-- ───────────────────────────────────────────── -->
+    <section id="reserve">
+      <h2><span class="step">Step 5</span>Reserve a cluster from an app</h2>
+      <p>Pipelines, CI jobs and schedulers such as Airflow ask Meridian for a cluster through its <strong>REST API</strong>. Each one gets a cluster to itself and gives it back when it's done.</p>
+      <p>The API uses <strong>mutual TLS</strong>: every client presents a certificate, and the name in that certificate is the client's identity. A client can release only its own reservations.</p>
+
+      <h3>Create certificates</h3>
+      <p>For this tutorial you'll make a small certificate authority with <code>openssl</code>. In production you'd usually issue these with cert-manager or your company's PKI.</p>
+      <div class="code"><pre><code>mkdir -p meridian-certs && cd meridian-certs
+
+<span class="c"># A certificate authority that signs both sides</span>
+openssl req -x509 -newkey rsa:2048 -nodes -days 365 -keyout ca.key -out ca.crt -subj "/CN=meridian-ca"
+
+<span class="c"># The server certificate for the operator</span>
+openssl req -newkey rsa:2048 -nodes -keyout server.key -out server.csr -subj "/CN=meridian-operator-rest"
+openssl x509 -req -in server.csr -CA ca.crt -CAkey ca.key -CAcreateserial -days 365 -out server.crt \
+  -extfile &lt;(printf "subjectAltName=DNS:localhost,DNS:meridian-operator-rest.meridian.svc,IP:127.0.0.1")
+
+<span class="c"># A client certificate. Its name, nightly-etl, becomes the client ID</span>
+openssl req -newkey rsa:2048 -nodes -keyout client.key -out client.csr -subj "/CN=nightly-etl"
+openssl x509 -req -in client.csr -CA ca.crt -CAkey ca.key -CAcreateserial -days 365 -out client.crt</code></pre></div>
+
+      <h3>Turn on the API</h3>
+      <div class="code"><pre><code>kubectl -n meridian create secret generic meridian-rest-tls \
+  --from-file=tls.crt=server.crt --from-file=tls.key=server.key --from-file=ca.crt=ca.crt
+
+helm upgrade meridian oci://ghcr.io/meridian-io/charts/meridian --version 1.5.0 -n meridian \
+  --reuse-values --set operator.rest.enabled=true --set operator.rest.tlsSecretName=meridian-rest-tls</code></pre></div>
+      <p>Inside the cluster, apps reach the API at <code>https://meridian-operator-rest.meridian.svc:8443</code>. From your laptop, open a <strong>second terminal</strong> and forward the port:</p>
+      <div class="code"><pre><code>kubectl -n meridian port-forward svc/meridian-operator-rest 8443:8443</code></pre></div>
+
+      <h3>Reserve, use, release</h3>
+      <p>Back in the first terminal, inside <code>meridian-certs</code>, ask for a cluster with the <code>laptop</code> profile:</p>
+      <div class="code"><pre><code>curl https://localhost:8443/api/v1/clusters/reservations \
+  --cacert ca.crt --cert client.crt --key client.key \
+  -H "Content-Type: application/json" \
+  -d '{"reservationId": "run-2026-10-27", "profile": "laptop"}'</code></pre></div>
+      <div class="code output"><span class="label">Output</span><pre><code>{"clusterName":"demo-pool-duvnm1m9",
+ "coordinatorUrl":"http://demo-pool-duvnm1m9-coordinator.meridian.svc.cluster.local:8080",
+ "reservedAt":"2026-10-27T02:00:11Z"}</code></pre></div>
+      <p>The answer comes back immediately, because the cluster was already running. Your job would now send its SQL to <code>coordinatorUrl</code>. In Kubernetes, the cluster shows who holds it:</p>
+      <div class="code output"><span class="label">kubectl -n meridian get clusters</span><pre><code>NAME                 PHASE      PROFILE   CLIENTID      READY   LASTROTATED   AGE
+demo-pool-duvnm1m9   Reserved   laptop    nightly-etl   true                  2m
+demo-pool-x1x38mrt   Idle       laptop                  true                  2m</code></pre></div>
+      <p>The <code>reservationId</code> makes the call safe to retry. If your job times out and asks again with the same ID, it gets the same cluster back rather than a second one. When the job is finished, release the cluster:</p>
+      <div class="code"><pre><code>curl -X DELETE https://localhost:8443/api/v1/clusters/reservations/run-2026-10-27 \
+  --cacert ca.crt --cert client.crt --key client.key</code></pre></div>
+      <p>The cluster goes back to <code>Idle</code>, ready for the next job. The API also lists clusters and pools and can scale a pool. See the <a href="https://github.com/meridian-io/meridian/blob/main/README.md">README</a> for every endpoint.</p>
+    </section>
+
+    <!-- ───────────────────────────────────────────── -->
+    <section id="mcp">
+      <h2><span class="step">Step 6</span>Connect an AI agent</h2>
+      <p>The MCP server lets an AI assistant work with your clusters on your behalf. It follows the latest MCP specification, so current clients connect to a single <code>/mcp</code> endpoint.</p>
+
+      <h3>Turn on the MCP server</h3>
+      <p>Clients authenticate with a bearer token. Create one, store it in a Secret, and enable the server:</p>
+      <div class="code"><pre><code>export MERIDIAN_MCP_TOKEN=$(openssl rand -hex 32)
+kubectl -n meridian create secret generic meridian-mcp-token --from-literal=token=$MERIDIAN_MCP_TOKEN
+
+helm upgrade meridian oci://ghcr.io/meridian-io/charts/meridian --version 1.5.0 -n meridian \
+  --reuse-values --set mcp.enabled=true --set mcp.auth.existingSecret=meridian-mcp-token</code></pre></div>
+      <p>In another terminal, forward its port:</p>
+      <div class="code"><pre><code>kubectl -n meridian port-forward svc/meridian-mcp 8080:8080</code></pre></div>
+
+      <h3>Add it to Claude Code</h3>
+      <div class="code"><pre><code>claude mcp add --transport http meridian http://localhost:8080/mcp \
+  --header "Authorization: Bearer $MERIDIAN_MCP_TOKEN"</code></pre></div>
+      <p>Start <code>claude</code> and ask in plain language. For example:</p>
+      <ul class="list">
+        <li>"Which Trino pools are there, and how many clusters are ready?"</li>
+        <li>"Reserve a cluster from demo-pool for me, then show me the tables in tpch.tiny."</li>
+        <li>"Using tpch.sf1, which five customers spent the most? Explain the query plan."</li>
+        <li>"Release the cluster you reserved."</li>
+      </ul>
+      <p>The agent picks the right tools: <code>list_pools</code>, <code>reserve_cluster</code>, <code>list_tables</code>, <code>execute_query</code>, <code>explain_query</code>, <code>release_cluster</code>.</p>
+
+      <h3>What the agent is allowed to do</h3>
+      <p>Meridian is careful by default:</p>
+      <ul class="list">
+        <li><strong>12 tools are on.</strong> They read cluster state, reserve and release clusters, explore catalogs, and run queries.</li>
+        <li><strong>Queries are read-only.</strong> <code>INSERT</code>, <code>DROP</code> and other writes are refused unless you set <code>mcp.allowWrites=true</code>.</li>
+        <li><strong>7 tools that change infrastructure are off:</strong> create and delete clusters, scale pools, add and remove catalogs, rotate credentials, promote configuration. Turn on the ones you want with <code>mcp.enableTools</code>, for example <code>--set mcp.enableTools='{scale_pool,add_catalog}'</code>. The chart grants Kubernetes permissions only for the tools you enable.</li>
+      </ul>
+      <div class="note blue">
+        <p><strong>Claude Desktop on your laptop?</strong> You don't need the in-cluster server. Download the <code>meridian</code> binary from the <a href="https://github.com/meridian-io/meridian/releases">releases page</a> and add it to <code>claude_desktop_config.json</code> with <code>"args": ["--transport", "stdio", "--namespace", "meridian"]</code>. It uses your current <code>kubectl</code> context.</p>
+      </div>
+    </section>
+
+    <!-- ───────────────────────────────────────────── -->
+    <section id="scale">
+      <h2><span class="step">Step 7</span>Size and scale pools</h2>
+
+      <h3>Change the pool size</h3>
+      <p>A pool's <code>replicas</code> is how many clusters it keeps. Reserved clusters count toward it, so with two replicas and one reservation, one cluster is still ready. To keep more on hand:</p>
+      <div class="code"><pre><code>kubectl -n meridian patch clusterpool demo-pool --type merge -p '{"spec":{"replicas":3}}'</code></pre></div>
+      <p>When you scale down, the pool removes idle clusters one at a time and never touches a reserved one.</p>
+
+      <h3>Let it scale itself</h3>
+      <p>A <code>ClusterPoolAutoscaler</code> watches how much of a pool is in use. It adds clusters when usage passes a threshold (70% by default) and removes them when usage falls well below it:</p>
+      <div class="code"><pre><code>cat &lt;&lt;EOF | kubectl apply -n meridian -f -
+apiVersion: meridian.io/v1alpha1
+kind: ClusterPoolAutoscaler
+metadata:
+  name: demo-pool
+spec:
+  targetRef:
+    name: demo-pool
+  minReplicas: 2
+  maxReplicas: 4
+  utilizationThreshold: "0.70"
+EOF
+
+kubectl -n meridian get clusterpoolautoscalers</code></pre></div>
+      <div class="code output"><span class="label">Output</span><pre><code>NAME        TARGET      MIN   MAX   CURRENT   UTILIZATION
+demo-pool   demo-pool   2     4     2         0.00</code></pre></div>
+
+      <h3>Shape clusters with profiles</h3>
+      <p>Profiles set the size of every pod in a cluster. Memory requests equal limits, so pods aren't killed by memory overcommit. CPU has a request but no limit, because CPU limits slow the JVM down.</p>
+      <div class="table-wrap"><table>
+        <tr><th>Profile</th><th>JVM heap</th><th>Pod memory</th><th>CPU</th><th>Sample data</th></tr>
+        <tr><td><code>default</code></td><td>4G</td><td>5Gi</td><td>1</td><td>tpch</td></tr>
+        <tr><td><code>medium</code></td><td>8G</td><td>10Gi</td><td>2</td><td>none</td></tr>
+        <tr><td><code>large</code></td><td>16G</td><td>20Gi</td><td>4</td><td>none</td></tr>
+      </table></div>
+      <p>A custom profile like your <code>laptop</code> one can also set different sizes for coordinators and workers (<code>coordinatorMemory</code>, <code>workerCPU</code>), and choose sample data with <code>sampleCatalogs: "tpch,tpcds"</code>, or none with <code>""</code>. Profile changes apply to clusters created afterwards.</p>
+
+      <h3>Other pool settings</h3>
+      <div class="table-wrap"><table>
+        <tr><th>Field</th><th>What it does</th></tr>
+        <tr><td><code>reservationTtl</code></td><td>How long a reservation may last before the pool takes the cluster back. Default <code>4h</code>.</td></tr>
+        <tr><td><code>maxClusterAge</code></td><td>Replace idle clusters older than this, e.g. <code>24h</code>, so long-running JVMs are refreshed.</td></tr>
+        <tr><td><code>workload</code></td><td>Tag a pool, e.g. <code>etl</code> or <code>analytics</code>, so clients can ask for "a cluster for analytics" instead of naming one.</td></tr>
+        <tr><td><code>template.image</code></td><td>Change it to roll out a new Trino version. The pool replaces idle clusters one at a time.</td></tr>
+        <tr><td><code>gateway</code></td><td>Register clusters with <a href="https://trinodb.github.io/trino-gateway/">Trino Gateway</a> automatically.</td></tr>
+      </table></div>
+    </section>
+
+    <!-- ───────────────────────────────────────────── -->
+    <section id="rotate">
+      <h2><span class="step">Step 8</span>Rotate catalog credentials</h2>
+      <p>Catalogs that connect to databases need credentials, and those need to change from time to time. Meridian can swap a catalog's credentials on a running cluster with no restart: queries on other catalogs keep running.</p>
+      <p>Credentials come from a Kubernetes Secret, HashiCorp Vault, or AWS Secrets Manager. With Kubernetes Secrets, each key in the Secret becomes a catalog property. A real Secret for a PostgreSQL catalog looks like this:</p>
+      <div class="code output"><span class="label">Example</span><pre><code>kubectl -n meridian create secret generic sales-db \
+  --from-literal=connector.name=postgresql \
+  --from-literal=connection-url=jdbc:postgresql://sales-db:5432/sales \
+  --from-literal=connection-user=trino \
+  --from-literal=connection-password='new-password'</code></pre></div>
+      <p>You don't have a database in this tutorial, so use the sample connector to see the mechanics:</p>
+      <div class="code"><pre><code>kubectl -n meridian create secret generic sales-db --from-literal=connector.name=tpch
+
+kubectl -n meridian annotate cluster $CLUSTER \
+  meridian.io/rotate-credentials=kubernetes/sales/sales-db</code></pre></div>
+      <p>The annotation reads <code>&lt;source&gt;/&lt;catalog&gt;/&lt;secret&gt;</code>. The operator reads the Secret and recreates the <code>sales</code> catalog with it, then records the result:</p>
+      <div class="code output"><span class="label">kubectl -n meridian get cluster $CLUSTER</span><pre><code>NAME                 PHASE   PROFILE   CLIENTID   READY   LASTROTATED   AGE
+demo-pool-duvnm1m9   Idle    laptop               true    7s            3m</code></pre></div>
+      <p>Run <code>SHOW CATALOGS</code> again and <code>sales</code> is there. If a rotation fails, for example because the database rejects the new password, Meridian retries with growing pauses, from 5 seconds up to 20 minutes. AI agents can trigger the same thing with the <code>rotate_credentials</code> tool once you enable it.</p>
+      <div class="note">
+        <p>Catalogs added while a cluster runs, like this one, live on the coordinator pod. If that pod is ever replaced, rotate again to restore the catalog. Keeping them automatically is planned for v1.6.</p>
+      </div>
+    </section>
+
+    <!-- ───────────────────────────────────────────── -->
+    <section id="monitor">
+      <h2><span class="step">Step 9</span>Monitor Meridian</h2>
+      <p>The operator and the MCP server publish Prometheus metrics. They're on by default: the operator on port 8081 and the MCP server on 9090, each behind an internal Service. Take a quick look:</p>
+      <div class="code"><pre><code><span class="c"># in another terminal</span>
+kubectl -n meridian port-forward svc/meridian-operator-metrics 8081:8081
+
+curl -s localhost:8081/metrics | grep -E '^meridian_(clusters|pool_desired)' | grep -v ' 0$'</code></pre></div>
+      <div class="code output"><span class="label">Output</span><pre><code>meridian_clusters{namespace="meridian",phase="Idle",pool="demo-pool"} 2
+meridian_pool_desired_replicas{namespace="meridian",pool="demo-pool"} 2</code></pre></div>
+
+      <h3>Prometheus and Grafana</h3>
+      <p>If your cluster runs the Prometheus Operator, for example through kube-prometheus-stack, the chart can register Meridian with Prometheus and install a ready-made Grafana dashboard:</p>
+      <div class="code"><pre><code>helm upgrade meridian oci://ghcr.io/meridian-io/charts/meridian --version 1.5.0 -n meridian --reuse-values \
+  --set metrics.serviceMonitor.enabled=true \
+  --set metrics.serviceMonitor.labels.release=&lt;your-prometheus-release&gt; \
+  --set metrics.dashboard.enabled=true</code></pre></div>
+      <p>The dashboard has three sections:</p>
+      <ul class="list">
+        <li><strong>Pools</strong>: ready, reserved and starting clusters, and ready vs desired per pool.</li>
+        <li><strong>Provisioning and reservations</strong>: how long new clusters take, reservation latency, how often clients had to wait, and why clusters were replaced.</li>
+        <li><strong>MCP server</strong>: tool calls, errors, latency, and cache hit rate.</li>
+      </ul>
+      <p>A good first alert: <code>meridian_clusters{phase="Idle"} == 0</code> for a few minutes, which means clients are waiting for capacity. Raise the pool size or add an autoscaler. Without the Prometheus Operator, import <a href="https://github.com/meridian-io/meridian/blob/main/charts/meridian/dashboards/meridian.json">the dashboard JSON</a> into Grafana yourself.</p>
+    </section>
+
+    <!-- ───────────────────────────────────────────── -->
+    <section id="production">
+      <h2>Going to production</h2>
+      <p>You've seen every part of Meridian. When you set it up for real, work through this list:</p>
+      <ul class="checklist">
+        <li><strong>Size pools from real queries.</strong> Start with <code>default</code> or <code>medium</code>, and use the dashboard's provisioning and reservation panels to tune <code>replicas</code> and the autoscaler.</li>
+        <li><strong>Separate workloads.</strong> One pool per kind of work (ETL, BI, ad-hoc), each with its own profile and <code>workload</code> tag, so they never compete.</li>
+        <li><strong>Run more than one of each.</strong> Set <code>operator.replicas</code> and <code>mcp.replicas</code> to 2 or more. Every replica serves the REST API and MCP, and upgrades happen without dropped requests.</li>
+        <li><strong>Expose the MCP server over HTTPS.</strong> Put it behind an Ingress or gateway with TLS. Use <code>mcp.allowedOrigins</code> only if a browser-based app will call it.</li>
+        <li><strong>Treat tokens and certificates as secrets.</strong> Issue client certificates per app, and restart the operator or MCP pods after rotating the server certificate or token.</li>
+        <li><strong>Enable only the agent tools you need,</strong> and keep <code>allowWrites</code> off unless an agent really must change data.</li>
+        <li><strong>Use a real secret store</strong> for catalog credentials: <code>operator.credentials.provider=vault</code> or <code>aws-secrets-manager</code>.</li>
+        <li><strong>Upgrade carefully.</strong> Helm doesn't upgrade resource definitions. Apply the new ones from the chart before each upgrade, as the README describes.</li>
+      </ul>
+    </section>
+
+    <!-- ───────────────────────────────────────────── -->
+    <section id="cleanup">
+      <h2>Clean up</h2>
+      <p>Delete the whole local cluster:</p>
+      <div class="code"><pre><code>kind delete cluster --name meridian-tutorial</code></pre></div>
+      <p>On a shared cluster, delete your pool first, then uninstall the chart. Helm keeps Meridian's resource definitions, so remove them yourself if you're done with Meridian:</p>
+      <div class="code"><pre><code>kubectl -n meridian delete clusterpoolautoscaler,clusterpool --all
+helm uninstall meridian -n meridian
+kubectl delete crd clusters.meridian.io clusterpools.meridian.io clusterpoolautoscalers.meridian.io</code></pre></div>
+
+      <h3>Where to go next</h3>
+      <ul class="list">
+        <li>The <a href="https://github.com/meridian-io/meridian/blob/main/README.md">README</a> lists every Helm value, operator flag, MCP tool and metric.</li>
+        <li><a href="https://github.com/meridian-io/meridian/releases">Releases</a> has the binaries and changelog.</li>
+        <li>Questions or ideas? <a href="https://github.com/meridian-io/meridian/issues">Open an issue</a>.</li>
+      </ul>
+    </section>
+
+  </main>
+</div>
+
+<footer>
+  <span>© 2026 Meridian · Apache 2.0</span>
+  <span>
+    <a href="/">Home</a>
+    <a href="https://github.com/meridian-io/meridian">GitHub</a>
+    <a href="https://github.com/meridian-io/meridian/releases">Releases</a>
+    <a href="https://github.com/meridian-io/meridian/issues">Issues</a>
+  </span>
+</footer>
+
+<script>
+  // Copy buttons on every command block (not on example output).
+  document.querySelectorAll('.code:not(.output)').forEach(function (block) {
+    var btn = document.createElement('button');
+    btn.className = 'copy';
+    btn.type = 'button';
+    btn.textContent = 'copy';
+    btn.addEventListener('click', function () {
+      var text = block.querySelector('code').innerText;
+      navigator.clipboard.writeText(text).then(function () {
+        btn.textContent = 'copied';
+        setTimeout(function () { btn.textContent = 'copy'; }, 1600);
+      });
+    });
+    block.appendChild(btn);
+  });
+
+  // Highlight the section being read in the table of contents.
+  var links = {};
+  document.querySelectorAll('.toc a').forEach(function (a) { links[a.getAttribute('href').slice(1)] = a; });
+  var observer = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      if (e.isIntersecting && links[e.target.id]) {
+        Object.values(links).forEach(function (a) { a.classList.remove('current'); });
+        links[e.target.id].classList.add('current');
+      }
+    });
+  }, { rootMargin: '-80px 0px -70% 0px' });
+  document.querySelectorAll('main section').forEach(function (s) { observer.observe(s); });
+</script>
+</body>
+</html>

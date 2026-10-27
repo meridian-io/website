@@ -376,6 +376,16 @@
       line-height: 1.65;
     }
 
+    /* ── Monitoring ── */
+    .monitor { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 36px; align-items: center; }
+    .monitor-shot img { display: block; width: 100%; height: auto; border: 1px solid var(--border-light); border-radius: 12px; box-shadow: 0 12px 40px rgba(0,0,0,0.4); }
+    .monitor-text ul { list-style: none; margin-bottom: 18px; }
+    .monitor-text li { font-size: 14.5px; color: var(--text-muted); line-height: 1.65; margin-bottom: 12px; }
+    .monitor-text li strong { color: #fff; }
+    .monitor-text p { font-size: 13.5px; color: var(--text-muted); line-height: 1.65; margin-bottom: 16px; }
+    .monitor-link { color: var(--purple-light); font-weight: 600; font-size: 14px; text-decoration: none; }
+    .monitor-link:hover { text-decoration: underline; }
+
     /* ── Use cases ── */
     .usecases {
       display: grid;
@@ -590,6 +600,7 @@
       .stats { gap: 36px; }
       .section { padding: 64px 24px; }
       .features { grid-template-columns: 1fr; }
+      .monitor { grid-template-columns: 1fr; gap: 24px; }
       .tools-grid { grid-template-columns: repeat(2, 1fr); }
       .lifecycle-wrap { padding: 28px 24px; }
       .cta-section { padding: 72px 24px; }
@@ -642,7 +653,7 @@
 <section class="hero">
   <div class="hero-badge">
     <div class="dot"></div>
-    v1.5.0 · <a href="https://github.com/meridian-io/meridian/blob/main/LICENSE" style="color:inherit;text-decoration:underline;text-underline-offset:3px;">Apache 2.0</a> · Open Source
+    v1.5.1 · <a href="https://github.com/meridian-io/meridian/blob/main/LICENSE" style="color:inherit;text-decoration:underline;text-underline-offset:3px;">Apache 2.0</a> · Open Source
   </div>
 
   <h1>
@@ -678,7 +689,7 @@
 
   <div class="install-block">
     <span class="prompt">$</span>
-    <span class="cmd" id="install-cmd">helm install meridian oci://ghcr.io/meridian-io/charts/meridian --version 1.5.0 -n meridian --create-namespace</span>
+    <span class="cmd" id="install-cmd">helm install meridian oci://ghcr.io/meridian-io/charts/meridian --version 1.5.1 -n meridian --create-namespace</span>
     <button class="copy-btn" onclick="copyInstall()">copy</button>
   </div>
 
@@ -700,7 +711,7 @@
       <div class="stat-label">Reservation delay</div>
     </div>
     <div class="stat">
-      <div class="stat-num">13</div>
+      <div class="stat-num">16</div>
       <div class="stat-label">E2E scenarios per PR</div>
     </div>
   </div>
@@ -757,7 +768,27 @@
     <div class="feature-card">
       <div class="feature-icon">🧪</div>
       <h3>Tested on Real Clusters</h3>
-      <p>Every pull request installs the last release on Kubernetes, upgrades it, and runs 13 end-to-end scenarios with real Trino: queries, reservations, crashes, rotation, and rolling restarts.</p>
+      <p>Every pull request installs the last release on Kubernetes, upgrades it, and runs 16 end-to-end scenarios with real Trino: queries, reservations, crashes, rotation, and rolling restarts.</p>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- Monitoring -->
+<section class="section" id="monitoring">
+  <div class="section-eyebrow">Monitoring</div>
+  <div class="section-title">See every pool at a glance</div>
+  <div class="monitor">
+    <a class="monitor-shot" href="/images/meridian-dashboard.png" title="Open the full dashboard"><img src="/images/meridian-dashboard-pools.png" alt="The Meridian Grafana dashboard: idle, reserved and starting clusters per pool over time, time to provision a cluster, reservation latency and reservations by result" width="1600" height="838" loading="lazy"></a>
+    <div class="monitor-text">
+      <ul>
+        <li><strong>Pools.</strong> Ready, reserved and starting clusters in every pool, against the size you asked for.</li>
+        <li><strong>Reservations.</strong> How fast apps get a cluster, how often they wait, how long new clusters take to start, and why clusters were replaced.</li>
+        <li><strong>AI agents.</strong> Which MCP tools agents call, how often calls fail, and the query cache hit rate.</li>
+      </ul>
+      <p>Prometheus metrics are on by default. With the Prometheus Operator, one Helm setting connects them and another installs this Grafana dashboard. Ready-made alerts and report queries are in the tutorial.</p>
+      <a class="monitor-link" href="/tutorial.html#monitor">Set up monitoring →</a>
     </div>
   </div>
 </section>
@@ -925,7 +956,7 @@
       <h3 style="font-family:monospace;font-size:14px;margin-bottom:8px;">trino-mcp-server</h3>
       <p style="font-size:13px;margin-bottom:16px;">MCP server for AI agents, Claude Desktop, and CI/CD pipelines.</p>
       <div style="background:#0a0a0a;border:1px solid #1a1a1a;border-radius:8px;padding:12px;font-size:12px;color:#4ade80;">
-        docker pull ghcr.io/meridian-io/trino-mcp-server:v1.5.0
+        docker pull ghcr.io/meridian-io/trino-mcp-server:v1.5.1
       </div>
     </div>
     <div class="feature-card" style="font-family:monospace;">
@@ -933,7 +964,7 @@
       <h3 style="font-family:monospace;font-size:14px;margin-bottom:8px;">trino-operator</h3>
       <p style="font-size:13px;margin-bottom:16px;">Kubernetes operator — manages the full Trino cluster lifecycle.</p>
       <div style="background:#0a0a0a;border:1px solid #1a1a1a;border-radius:8px;padding:12px;font-size:12px;color:#4ade80;">
-        docker pull ghcr.io/meridian-io/trino-operator:v1.5.0
+        docker pull ghcr.io/meridian-io/trino-operator:v1.5.1
       </div>
     </div>
   </div>

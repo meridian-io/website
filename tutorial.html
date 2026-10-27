@@ -134,6 +134,9 @@
     .note p:last-child { margin-bottom: 0; }
     .note.blue { border-left-color: var(--blue); }
     .table-wrap { overflow-x: auto; margin: 6px 0 20px; }
+    .shot { margin: 10px 0 24px; }
+    .shot img { display: block; width: 100%; height: auto; border: 1px solid var(--border); border-radius: 10px; }
+    .shot figcaption { font-size: 13px; color: var(--text-muted); margin-top: 8px; }
     table { width: 100%; border-collapse: collapse; font-size: 14px; }
     th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
     th { color: var(--text-muted); font-weight: 600; font-size: 12.5px; text-transform: uppercase; letter-spacing: 0.6px; }
@@ -209,7 +212,7 @@
   <p class="lead">This guide walks you through Meridian from first install to monitoring. You'll run a pool of ready Trino clusters, query sample data, reserve a cluster from an app, connect an AI agent, and see it all on a dashboard.</p>
   <div class="meta">
     <span class="chip">About 45 minutes</span>
-    <span class="chip">Meridian v1.5.0</span>
+    <span class="chip">Meridian v1.5.1</span>
     <span class="chip">Kubernetes 1.26+</span>
     <span class="chip">Runs on a laptop with kind</span>
   </div>
@@ -328,7 +331,7 @@ kubectl cluster-info --context kind-meridian-tutorial</code></pre></div>
     <section id="install">
       <h2><span class="step">Step 2</span>Install Meridian</h2>
       <p>Install the chart into a <code>meridian</code> namespace. This adds the three resource types and starts the operator.</p>
-      <div class="code"><pre><code>helm install meridian oci://ghcr.io/meridian-io/charts/meridian --version 1.5.0 \
+      <div class="code"><pre><code>helm install meridian oci://ghcr.io/meridian-io/charts/meridian --version 1.5.1 \
   --namespace meridian --create-namespace
 
 kubectl -n meridian get pods</code></pre></div>
@@ -434,7 +437,7 @@ openssl x509 -req -in client.csr -CA ca.crt -CAkey ca.key -CAcreateserial -days 
       <div class="code"><pre><code>kubectl -n meridian create secret generic meridian-rest-tls \
   --from-file=tls.crt=server.crt --from-file=tls.key=server.key --from-file=ca.crt=ca.crt
 
-helm upgrade meridian oci://ghcr.io/meridian-io/charts/meridian --version 1.5.0 -n meridian \
+helm upgrade meridian oci://ghcr.io/meridian-io/charts/meridian --version 1.5.1 -n meridian \
   --reuse-values --set operator.rest.enabled=true --set operator.rest.tlsSecretName=meridian-rest-tls</code></pre></div>
       <p>Inside the cluster, apps reach the API at <code>https://meridian-operator-rest.meridian.svc:8443</code>. From your laptop, open a <strong>second terminal</strong> and forward the port:</p>
       <div class="code"><pre><code>kubectl -n meridian port-forward svc/meridian-operator-rest 8443:8443</code></pre></div>
@@ -468,7 +471,7 @@ demo-pool-x1x38mrt   Idle       laptop                  true                  2m
       <div class="code"><pre><code>export MERIDIAN_MCP_TOKEN=$(openssl rand -hex 32)
 kubectl -n meridian create secret generic meridian-mcp-token --from-literal=token=$MERIDIAN_MCP_TOKEN
 
-helm upgrade meridian oci://ghcr.io/meridian-io/charts/meridian --version 1.5.0 -n meridian \
+helm upgrade meridian oci://ghcr.io/meridian-io/charts/meridian --version 1.5.1 -n meridian \
   --reuse-values --set mcp.enabled=true --set mcp.auth.existingSecret=meridian-mcp-token</code></pre></div>
       <p>In another terminal, forward its port:</p>
       <div class="code"><pre><code>kubectl -n meridian port-forward svc/meridian-mcp 8080:8080</code></pre></div>
@@ -507,7 +510,7 @@ helm upgrade meridian oci://ghcr.io/meridian-io/charts/meridian --version 1.5.0 
       <p>When you scale down, the pool removes idle clusters one at a time and never touches a reserved one.</p>
 
       <h3>Let it scale itself</h3>
-      <p>A <code>ClusterPoolAutoscaler</code> watches how much of a pool is in use. It adds clusters when usage passes a threshold (70% by default) and removes them when usage falls well below it:</p>
+      <p>A <code>ClusterPoolAutoscaler</code> watches how much of a pool is in use. It adds clusters when usage passes a threshold (70% by default) and removes them when usage falls well below it, waiting 5 minutes after any change so new clusters aren't removed as soon as they start:</p>
       <div class="code"><pre><code>cat &lt;&lt;EOF | kubectl apply -n meridian -f -
 apiVersion: meridian.io/v1alpha1
 kind: ClusterPoolAutoscaler
@@ -583,17 +586,99 @@ meridian_pool_desired_replicas{namespace="meridian",pool="demo-pool"} 2</code></
 
       <h3>Prometheus and Grafana</h3>
       <p>If your cluster runs the Prometheus Operator, for example through kube-prometheus-stack, the chart can register Meridian with Prometheus and install a ready-made Grafana dashboard:</p>
-      <div class="code"><pre><code>helm upgrade meridian oci://ghcr.io/meridian-io/charts/meridian --version 1.5.0 -n meridian --reuse-values \
+      <div class="code"><pre><code>helm upgrade meridian oci://ghcr.io/meridian-io/charts/meridian --version 1.5.1 -n meridian --reuse-values \
   --set metrics.serviceMonitor.enabled=true \
   --set metrics.serviceMonitor.labels.release=&lt;your-prometheus-release&gt; \
   --set metrics.dashboard.enabled=true</code></pre></div>
+      <p>The release label is the Helm release name of your Prometheus stack; <code>helm list -A</code> shows it. Within a minute, Prometheus starts collecting Meridian's metrics and a <strong>Meridian</strong> dashboard appears in Grafana. Without the Prometheus Operator, import <a href="https://github.com/meridian-io/meridian/blob/main/charts/meridian/dashboards/meridian.json">the dashboard JSON</a> into Grafana yourself.</p>
+      <figure class="shot">
+        <a href="/images/meridian-dashboard.png"><img src="/images/meridian-dashboard.png" alt="The Meridian Grafana dashboard: idle, reserved and starting clusters per pool, provisioning time, reservation latency and results, clusters replaced by reason, credential rotations, and MCP tool calls, errors, latency and cache hit rate" width="1600" height="1809" loading="lazy"></a>
+        <figcaption>The tutorial's pool after 25 minutes of apps reserving clusters and an AI agent running queries.</figcaption>
+      </figure>
       <p>The dashboard has three sections:</p>
       <ul class="list">
         <li><strong>Pools</strong>: ready, reserved and starting clusters, and ready vs desired per pool.</li>
         <li><strong>Provisioning and reservations</strong>: how long new clusters take, reservation latency, how often clients had to wait, and why clusters were replaced.</li>
         <li><strong>MCP server</strong>: tool calls, errors, latency, and cache hit rate.</li>
       </ul>
-      <p>A good first alert: <code>meridian_clusters{phase="Idle"} == 0</code> for a few minutes, which means clients are waiting for capacity. Raise the pool size or add an autoscaler. Without the Prometheus Operator, import <a href="https://github.com/meridian-io/meridian/blob/main/charts/meridian/dashboards/meridian.json">the dashboard JSON</a> into Grafana yourself.</p>
+
+      <h3>Alerts</h3>
+      <p>Three alerts cover the problems people notice first. Save this as <code>meridian-alerts.yaml</code>, set the same release label as above, and apply it:</p>
+      <div class="code"><pre><code>apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: meridian-alerts
+  labels:
+    release: &lt;your-prometheus-release&gt;
+spec:
+  groups:
+    - name: meridian
+      rules:
+        - alert: MeridianPoolHasNoIdleClusters
+          expr: |
+            max by (namespace, pool) (meridian_clusters{phase="Idle"}) == 0
+              and on (namespace, pool)
+            max by (namespace, pool) (meridian_pool_desired_replicas) &gt; 0
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Pool {{ $labels.pool }} has had no idle clusters for 5 minutes"
+        - alert: MeridianClustersFailing
+          expr: |
+            sum by (namespace, pool) (
+              increase(meridian_pool_clusters_replaced_total{reason=~"failed|degraded"}[1h])
+            ) &gt;= 3
+          labels:
+            severity: warning
+          annotations:
+            summary: "Pool {{ $labels.pool }} replaced {{ $value | humanize }} broken clusters in the last hour"
+        - alert: MeridianCredentialRotationFailing
+          expr: |
+            sum by (backend) (
+              increase(meridian_credential_rotations_total{result="failure"}[30m])
+            ) &gt;= 3
+          labels:
+            severity: warning
+          annotations:
+            summary: "Credential rotations from {{ $labels.backend }} keep failing"</code></pre></div>
+      <div class="code"><pre><code>kubectl -n meridian apply -f meridian-alerts.yaml</code></pre></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Alert</th><th>What it means</th><th>What to do</th></tr></thead>
+        <tbody>
+          <tr><td><code>MeridianPoolHasNoIdleClusters</code></td><td>Every cluster in the pool has been busy for 5 minutes, so new reservations wait and may fail.</td><td>Raise the pool's <code>replicas</code>, or the autoscaler's <code>maxReplicas</code>.</td></tr>
+          <tr><td><code>MeridianClustersFailing</code></td><td>The pool replaced three or more broken clusters in an hour.</td><td>Check the Trino pods' events and logs, for example for out-of-memory kills or image pull errors.</td></tr>
+          <tr><td><code>MeridianCredentialRotationFailing</code></td><td>Rotations keep failing, for example because a Secret is missing or a password was rejected. Meridian keeps retrying.</td><td>Find the cluster with <code>kubectl get clusters -A</code> and read its <code>CredentialRotation</code> condition.</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>Reports</h3>
+      <p>Set the dashboard's time range to <strong>Last 7 days</strong> and it becomes a weekly report: the counts and provisioning times cover the whole range. For numbers to paste into a review, run these queries in Grafana's Explore view. Each looks back 7 days; change <code>[7d]</code> for another period.</p>
+      <div class="code"><pre><code><span class="c"># How busy was each pool? Average and peak share of clusters in use</span>
+avg_over_time((max by (namespace, pool) (meridian_clusters{phase="Reserved"})
+  / max by (namespace, pool) (meridian_pool_desired_replicas))[7d:5m])
+max_over_time((max by (namespace, pool) (meridian_clusters{phase="Reserved"})
+  / max by (namespace, pool) (meridian_pool_desired_replicas))[7d:5m])
+
+<span class="c"># How many reservations did apps make, and how many got no cluster?</span>
+round(sum by (result) (increase(meridian_reservation_duration_seconds_count[7d])))
+
+<span class="c"># How long did apps wait for a cluster? (95th percentile, seconds)</span>
+histogram_quantile(0.95, sum by (le) (
+  increase(meridian_reservation_duration_seconds_bucket{result="ok"}[7d])))
+
+<span class="c"># How long does a new cluster take to start, per pool? (95th percentile, seconds)</span>
+histogram_quantile(0.95, sum by (pool, le) (
+  increase(meridian_cluster_provision_seconds_bucket[7d])))
+
+<span class="c"># Why were clusters replaced?</span>
+round(sum by (pool, reason) (increase(meridian_pool_clusters_replaced_total[7d])))
+
+<span class="c"># Which agent tools are used most, and how often do they fail?</span>
+topk(5, round(sum by (tool) (increase(meridian_mcp_tool_calls_total[7d]))))
+sum by (tool) (increase(meridian_mcp_tool_calls_total{result="error"}[7d]))
+  / sum by (tool) (increase(meridian_mcp_tool_calls_total[7d]))</code></pre></div>
+      <p>If the share of clusters in use often passes 70%, or apps start getting <code>no_capacity</code>, the pool is too small. If the peak stays low, you can run fewer clusters.</p>
     </section>
 
     <!-- ───────────────────────────────────────────── -->
